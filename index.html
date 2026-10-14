@@ -1,203 +1,3 @@
-<!DOCTYPE html>
-<html lang="fi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sokerimittari</title>
-<style>
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  padding: 20px 14px;
-  background: #111217;
-  color: #f3f3f5;
-  font-family: Arial, sans-serif;
-}
-
-main {
-  max-width: 650px;
-  margin: auto;
-}
-
-h1 {
-  font-size: 29px;
-  margin-bottom: 4px;
-}
-
-.subtitle {
-  color: #b6b7c1;
-  margin-top: 0;
-  margin-bottom: 22px;
-}
-
-.panel {
-  background: #1c1e27;
-  border: 1px solid #343642;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-label {
-  display: block;
-  margin: 13px 0 6px;
-  font-weight: bold;
-}
-
-input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #505260;
-  border-radius: 8px;
-  background: #111217;
-  color: white;
-  font-size: 16px;
-}
-
-button {
-  width: 100%;
-  padding: 13px;
-  margin-top: 17px;
-  border: 0;
-  border-radius: 8px;
-  background: #f2cb52;
-  color: #171717;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.status {
-  margin-top: 12px;
-  color: #d5d5dc;
-  overflow-wrap: anywhere;
-}
-
-.hidden {
-  display: none;
-}
-
-.meter {
-  margin: 18px 0;
-}
-
-.meter-title {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-weight: bold;
-}
-
-.meter-title strong {
-  font-size: 20px;
-}
-
-.bar {
-  height: 12px;
-  margin-top: 8px;
-  background: #393b47;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.fill {
-  height: 100%;
-  width: 0;
-  background: #f2cb52;
-}
-
-.explanation {
-  white-space: pre-wrap;
-  line-height: 1.5;
-}
-
-.history-item {
-  border-top: 1px solid #393b47;
-  padding: 10px 0;
-}
-
-.history-name {
-  font-weight: bold;
-  overflow-wrap: anywhere;
-}
-
-.history-values {
-  color: #b6b7c1;
-  font-size: 13px;
-}
-
-.small {
-  color: #b6b7c1;
-  font-size: 12px;
-  line-height: 1.5;
-}
-</style>
-</head>
-
-<body>
-<main>
-
-<h1>🎵 Sokerimittari</h1>
-<p class="subtitle">Musiikin sokeri, mausteisuus ja metallisuus</p>
-
-<section class="panel">
-  <form id="form">
-    <label for="artist">Artisti</label>
-    <input id="artist" maxlength="120" required
-      placeholder="Esim. Days of the New">
-
-    <label for="song">Kappale</label>
-    <input id="song" maxlength="180" required
-      placeholder="Esim. Touch, Peel and Stand">
-
-    <button id="submit" type="submit">Arvioi kappale</button>
-    <div id="status" class="status" role="status"></div>
-  </form>
-</section>
-
-<section id="result" class="panel hidden">
-  <h2 id="resultTitle">Arvio</h2>
-
-  <div class="meter">
-    <div class="meter-title">
-      <span>Sokerisuus</span>
-      <strong id="sugarValue">—</strong>
-    </div>
-    <div class="bar"><div id="sugarBar" class="fill"></div></div>
-  </div>
-
-  <div class="meter">
-    <div class="meter-title">
-      <span>Mausteisuus</span>
-      <strong id="spiceValue">—</strong>
-    </div>
-    <div class="bar"><div id="spiceBar" class="fill"></div></div>
-  </div>
-
-  <div class="meter">
-    <div class="meter-title">
-      <span>Metallisuus</span>
-      <strong id="metalValue">—</strong>
-    </div>
-    <div class="bar"><div id="metalBar" class="fill"></div></div>
-  </div>
-
-  <h3>Perustelut</h3>
-  <p id="explanation" class="explanation"></p>
-  <p id="confidence" class="small"></p>
-</section>
-
-<section class="panel">
-  <h2>Aiemmat tulokset</h2>
-  <div id="history" class="small">Ladataan tuloksia…</div>
-</section>
-
-<p class="small">
-Arviot kuvaavat musiikin piirteitä, eivät sen laatua.
-Metallisuus tarkoittaa metallisia musiikillisia piirteitä,
-ei pelkästään äänekkyyttä tai särökitaraa.
-</p>
-
 <script>
 const form = document.getElementById("form");
 const button = document.getElementById("submit");
@@ -205,15 +5,31 @@ const statusBox = document.getElementById("status");
 const resultBox = document.getElementById("result");
 const historyBox = document.getElementById("history");
 
+const STORAGE_KEY = "sokerimittari-history-v1";
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(items) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
 function showMeter(name, value) {
   const number = Math.max(0, Math.min(100, Number(value) || 0));
   document.getElementById(name + "Value").textContent =
     Math.round(number) + "%";
-  document.getElementById(name + "Bar").style.width = number + "%";
+  document.getElementById(name + "Bar").style.width =
+    number + "%";
 }
 
 function showResult(item) {
   resultBox.classList.remove("hidden");
+
   document.getElementById("resultTitle").textContent =
     item.artist + " – " + item.song;
 
@@ -225,16 +41,18 @@ function showResult(item) {
     item.explanation || "Perustelua ei saatavilla.";
 
   document.getElementById("confidence").textContent =
-    item.confidence ? "Arvion varmuus: " + item.confidence + "." : "";
+    item.confidence
+      ? "Arvion varmuus: " + item.confidence + "."
+      : "";
 }
 
 function renderHistory(items) {
-  if (!Array.isArray(items) || items.length === 0) {
+  historyBox.replaceChildren();
+
+  if (!items.length) {
     historyBox.textContent = "Ei vielä tallennettuja tuloksia.";
     return;
   }
-
-  historyBox.replaceChildren();
 
   items.forEach(item => {
     const row = document.createElement("div");
@@ -256,25 +74,13 @@ function renderHistory(items) {
   });
 }
 
-async function loadHistory() {
-  try {
-    const response = await fetch("/api/history");
-    const data = await response.json();
-
-    if (!response.ok) throw new Error();
-
-    renderHistory(data.items);
-  } catch {
-    historyBox.textContent =
-      "Yhteinen tuloshistoria ei ole vielä käytössä.";
-  }
-}
-
 form.addEventListener("submit", async event => {
   event.preventDefault();
 
-  const artist = document.getElementById("artist").value.trim();
-  const song = document.getElementById("song").value.trim();
+  const artist =
+    document.getElementById("artist").value.trim();
+  const song =
+    document.getElementById("song").value.trim();
 
   if (!artist || !song) return;
 
@@ -285,31 +91,53 @@ form.addEventListener("submit", async event => {
   try {
     const response = await fetch("/api/evaluate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ artist, song })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Arviointi ei onnistunut.");
+      throw new Error(
+        data.error || "Arviointi ei onnistunut."
+      );
     }
 
-    showResult(data.item);
-    statusBox.textContent = "Arvio valmis ja tallennettu.";
-    await loadHistory();
+    const item = {
+      ...data.item,
+      artist,
+      song,
+      savedAt: new Date().toISOString()
+    };
+
+    showResult(item);
+
+    let items = getHistory();
+
+    // Saman kappaleen uusi arvio korvaa vanhan.
+    items = items.filter(old =>
+      !(old.artist.toLowerCase() === artist.toLowerCase() &&
+        old.song.toLowerCase() === song.toLowerCase())
+    );
+
+    items.unshift(item);
+    items = items.slice(0, 100);
+
+    saveHistory(items);
+    renderHistory(items);
+
+    statusBox.textContent =
+      "Arvio valmis. Tulos tallennettiin tähän selaimeen.";
 
   } catch (error) {
     statusBox.textContent =
-      error.message || "Arviointipalvelu ei ole vielä käytettävissä.";
+      error.message || "Arviointipalveluun ei saatu yhteyttä.";
   } finally {
     button.disabled = false;
   }
 });
 
-loadHistory();
-</script>
-
-</main>
-</body>
- </html>
+renderHistory(getHistory());
+      </script>
