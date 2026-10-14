@@ -6,76 +6,57 @@
 <style>
 body{font-family:Arial,sans-serif;background:#171717;color:#eee;max-width:700px;margin:0 auto;padding:20px}
 h1{color:#ffcc66}
-h2{margin-top:30px}
-input,select{box-sizing:border-box;width:100%;padding:12px;margin:6px 0;background:#292929;color:white;border:1px solid #555;border-radius:6px;font-size:16px}
-button{padding:12px 16px;margin:8px 0;background:#ffcc66;color:#171717;border:0;border-radius:6px;font-weight:bold;font-size:16px}
+input{box-sizing:border-box;width:100%;padding:13px;margin:7px 0;background:#292929;color:white;border:1px solid #555;border-radius:6px;font-size:16px}
+button{padding:13px 18px;margin:10px 0;background:#ffcc66;color:#171717;border:0;border-radius:6px;font-weight:bold;font-size:16px}
 .card{background:#292929;padding:14px;margin:12px 0;border-radius:8px}
-.small{color:#bbb;font-size:14px}
-.result{color:#ffcc66;font-size:20px;font-weight:bold}
+.small{color:#bbb;font-size:13px}
+.result{color:#ffcc66;font-size:19px;font-weight:bold}
 </style>
 </head>
 <body>
-<h1>🎵 Sokerimittari</h1><h2>Lisää kappale</h2>
-<input id="artist" placeholder="Artisti">
+<h1>🎵 Sokerimittari</h1><input id="artist" placeholder="Artisti">
 <input id="song" placeholder="Kappale">
-<label for="sugar">Sokerisuus (%)</label>
-<input id="sugar" type="number" min="0" max="100" placeholder="0–100">
-<label for="spice">Mausteisuus (%)</label>
-<input id="spice" type="number" min="0" max="100" placeholder="0–100">
-<button onclick="addSong()">Tallenna tulos</button><p id="message" class="small"></p><h2>Kappaleet ja tulokset</h2>
-<input id="search" placeholder="Hae artistia tai kappaletta" oninput="showSongs()">
+<button onclick="evaluateSong()">Arvioi kappale</button>
+<p id="message" class="small"></p>
+<div id="current"></div><h2>Aiemmat tulokset</h2>
 <div id="history"></div><script>
 const KEY="sokerimittari-history-v1";
-const songs=JSON.parse(localStorage.getItem(KEY)||"[]");
+let songs=[];
+try { songs=JSON.parse(localStorage.getItem(KEY)||"[]"); } catch(e) {}
 
-function showSongs(){
- const q=document.getElementById("search").value.toLowerCase();
- const list=document.getElementById("history");
- const found=songs.filter(x=>(x.artist+" "+x.song).toLowerCase().includes(q));
- if(!found.length){
-  list.innerHTML='<p class="small">Ei vielä tallennettuja tuloksia.</p>';
+function safe(text){
+ return String(text).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function showHistory(){
+ const history=document.getElementById("history");
+ if(!songs.length){
+  history.innerHTML='<p class="small">Ei vielä tallennettuja tuloksia.</p>';
   return;
  }
- list.innerHTML=found.slice().reverse().map(x=>
-  '<div class="card"><strong>'+escapeHtml(x.artist)+' – '+escapeHtml(x.song)+'</strong>'+
+ history.innerHTML=songs.slice().reverse().map(x=>
+  '<div class="card"><strong>'+safe(x.artist)+' – '+safe(x.song)+'</strong>'+
   '<p class="result">Sokerisuus: '+x.sugar+' %</p>'+
   '<p class="result">Mausteisuus: '+x.spice+' %</p>'+
-  '<p class="small">'+escapeHtml(x.date)+'</p></div>'
+  '<p class="small">'+safe(x.date)+'</p></div>'
  ).join("");
 }
 
-function escapeHtml(s){
- return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-function addSong(){
+function evaluateSong(){
  const artist=document.getElementById("artist").value.trim();
  const song=document.getElementById("song").value.trim();
- const sugar=Number(document.getElementById("sugar").value);
- const spice=Number(document.getElementById("spice").value);
  const message=document.getElementById("message");
+ const current=document.getElementById("current");
 
- if(!artist||!song||document.getElementById("sugar").value===""||document.getElementById("spice").value===""){
-  message.textContent="Täytä artisti, kappale sekä molemmat prosenttiarvot.";
+ if(!artist||!song){
+  message.textContent="Kirjoita artistin ja kappaleen nimi.";
   return;
  }
- if(!Number.isFinite(sugar)||!Number.isFinite(spice)||sugar<0||sugar>100||spice<0||spice>100){
-  message.textContent="Arvojen pitää olla välillä 0–100.";
-  return;
- }
- if(songs.length>=100){
-  message.textContent="Ilmainen tallennustila on täynnä. Aiemmat tulokset ovat edelleen katseltavissa tässä selaimessa.";
-  return;
- }
- songs.push({artist,song,sugar,spice,date:new Date().toLocaleString("fi-FI")});
- localStorage.setItem(KEY,JSON.stringify(songs));
- document.getElementById("artist").value="";
- document.getElementById("song").value="";
- document.getElementById("sugar").value="";
- document.getElementById("spice").value="";
- message.textContent="Tulos tallennettu tähän selaimeen.";
- showSongs();
+
+ current.innerHTML="";
+ message.textContent="Arviointia ei ole vielä kytketty käyttöön. Kappaletta ei tallennettu.";
 }
-showSongs();
+
+showHistory();
 </script></body>
 </html>
