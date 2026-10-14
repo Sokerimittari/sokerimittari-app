@@ -4,60 +4,78 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sokerimittari</title>
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #171717;
-  color: white;
-  max-width: 600px;
-  margin: 30px auto;
-  padding: 20px;
-}
-h1 { color: #ffcc66; }
-p { line-height: 1.5; }
-textarea {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 120px;
-  padding: 12px;
-  font-size: 16px;
-  border-radius: 8px;
-}
-button {
-  background: #ffcc66;
-  color: #171717;
-  border: 0;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  margin-top: 12px;
-}
-#result {
-  font-size: 28px;
-  color: #ffcc66;
-  margin-top: 20px;
-}
+body{font-family:Arial,sans-serif;background:#171717;color:#eee;max-width:700px;margin:0 auto;padding:20px}
+h1{color:#ffcc66}
+h2{margin-top:30px}
+input,select{box-sizing:border-box;width:100%;padding:12px;margin:6px 0;background:#292929;color:white;border:1px solid #555;border-radius:6px;font-size:16px}
+button{padding:12px 16px;margin:8px 0;background:#ffcc66;color:#171717;border:0;border-radius:6px;font-weight:bold;font-size:16px}
+.card{background:#292929;padding:14px;margin:12px 0;border-radius:8px}
+.small{color:#bbb;font-size:14px}
+.result{color:#ffcc66;font-size:20px;font-weight:bold}
 </style>
 </head>
 <body>
-<h1>🎵 Sokerimittari</h1>
-<p>Millaisen tunteen tämä musiikki herättää? Kerro artisti, kappale ja oma kuuntelukokemuksesi.</p><textarea id="music" placeholder="Artisti, kappale ja omat ajatukset..."></textarea><br>
-<button onclick="measure()">Arvioi sokeritaso</button><div id="result"></div>
-<p id="note"></p><script>
-function measure() {
-  const text = document.getElementById('music').value.trim();
-  const result = document.getElementById('result');
-  const note = document.getElementById('note');
+<h1>🎵 Sokerimittari</h1><h2>Lisää kappale</h2>
+<input id="artist" placeholder="Artisti">
+<input id="song" placeholder="Kappale">
+<label for="sugar">Sokerisuus (%)</label>
+<input id="sugar" type="number" min="0" max="100" placeholder="0–100">
+<label for="spice">Mausteisuus (%)</label>
+<input id="spice" type="number" min="0" max="100" placeholder="0–100">
+<button onclick="addSong()">Tallenna tulos</button><p id="message" class="small"></p><h2>Kappaleet ja tulokset</h2>
+<input id="search" placeholder="Hae artistia tai kappaletta" oninput="showSongs()">
+<div id="history"></div><script>
+const KEY="sokerimittari-history-v1";
+const songs=JSON.parse(localStorage.getItem(KEY)||"[]");
 
-  if (!text) {
-    result.textContent = 'Kirjoita ensin kappaleen tiedot.';
-    note.textContent = '';
-    return;
-  }
-
-  result.textContent = 'Sokeritaso: ei vielä arvioitu';
-  note.textContent =
-    'Tämä on Sokerimittarin perusversio. Automaattinen musiikkianalyysi ja omat vertailukappaleet lisätään seuraavassa vaiheessa.';
+function showSongs(){
+ const q=document.getElementById("search").value.toLowerCase();
+ const list=document.getElementById("history");
+ const found=songs.filter(x=>(x.artist+" "+x.song).toLowerCase().includes(q));
+ if(!found.length){
+  list.innerHTML='<p class="small">Ei vielä tallennettuja tuloksia.</p>';
+  return;
+ }
+ list.innerHTML=found.slice().reverse().map(x=>
+  '<div class="card"><strong>'+escapeHtml(x.artist)+' – '+escapeHtml(x.song)+'</strong>'+
+  '<p class="result">Sokerisuus: '+x.sugar+' %</p>'+
+  '<p class="result">Mausteisuus: '+x.spice+' %</p>'+
+  '<p class="small">'+escapeHtml(x.date)+'</p></div>'
+ ).join("");
 }
+
+function escapeHtml(s){
+ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function addSong(){
+ const artist=document.getElementById("artist").value.trim();
+ const song=document.getElementById("song").value.trim();
+ const sugar=Number(document.getElementById("sugar").value);
+ const spice=Number(document.getElementById("spice").value);
+ const message=document.getElementById("message");
+
+ if(!artist||!song||document.getElementById("sugar").value===""||document.getElementById("spice").value===""){
+  message.textContent="Täytä artisti, kappale sekä molemmat prosenttiarvot.";
+  return;
+ }
+ if(!Number.isFinite(sugar)||!Number.isFinite(spice)||sugar<0||sugar>100||spice<0||spice>100){
+  message.textContent="Arvojen pitää olla välillä 0–100.";
+  return;
+ }
+ if(songs.length>=100){
+  message.textContent="Ilmainen tallennustila on täynnä. Aiemmat tulokset ovat edelleen katseltavissa tässä selaimessa.";
+  return;
+ }
+ songs.push({artist,song,sugar,spice,date:new Date().toLocaleString("fi-FI")});
+ localStorage.setItem(KEY,JSON.stringify(songs));
+ document.getElementById("artist").value="";
+ document.getElementById("song").value="";
+ document.getElementById("sugar").value="";
+ document.getElementById("spice").value="";
+ message.textContent="Tulos tallennettu tähän selaimeen.";
+ showSongs();
+}
+showSongs();
 </script></body>
 </html>
