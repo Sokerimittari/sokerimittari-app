@@ -1,62 +1,315 @@
-<!DOCTYPE html><html lang="fi">
+<!DOCTYPE html>
+<html lang="fi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sokerimittari</title>
 <style>
-body{font-family:Arial,sans-serif;background:#171717;color:#eee;max-width:700px;margin:0 auto;padding:20px}
-h1{color:#ffcc66}
-input{box-sizing:border-box;width:100%;padding:13px;margin:7px 0;background:#292929;color:white;border:1px solid #555;border-radius:6px;font-size:16px}
-button{padding:13px 18px;margin:10px 0;background:#ffcc66;color:#171717;border:0;border-radius:6px;font-weight:bold;font-size:16px}
-.card{background:#292929;padding:14px;margin:12px 0;border-radius:8px}
-.small{color:#bbb;font-size:13px}
-.result{color:#ffcc66;font-size:19px;font-weight:bold}
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 20px 14px;
+  background: #111217;
+  color: #f3f3f5;
+  font-family: Arial, sans-serif;
+}
+
+main {
+  max-width: 650px;
+  margin: auto;
+}
+
+h1 {
+  font-size: 29px;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #b6b7c1;
+  margin-top: 0;
+  margin-bottom: 22px;
+}
+
+.panel {
+  background: #1c1e27;
+  border: 1px solid #343642;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  margin: 13px 0 6px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #505260;
+  border-radius: 8px;
+  background: #111217;
+  color: white;
+  font-size: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 13px;
+  margin-top: 17px;
+  border: 0;
+  border-radius: 8px;
+  background: #f2cb52;
+  color: #171717;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.status {
+  margin-top: 12px;
+  color: #d5d5dc;
+  overflow-wrap: anywhere;
+}
+
+.hidden {
+  display: none;
+}
+
+.meter {
+  margin: 18px 0;
+}
+
+.meter-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: bold;
+}
+
+.meter-title strong {
+  font-size: 20px;
+}
+
+.bar {
+  height: 12px;
+  margin-top: 8px;
+  background: #393b47;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  width: 0;
+  background: #f2cb52;
+}
+
+.explanation {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.history-item {
+  border-top: 1px solid #393b47;
+  padding: 10px 0;
+}
+
+.history-name {
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.history-values {
+  color: #b6b7c1;
+  font-size: 13px;
+}
+
+.small {
+  color: #b6b7c1;
+  font-size: 12px;
+  line-height: 1.5;
+}
 </style>
 </head>
+
 <body>
-<h1>🎵 Sokerimittari</h1><input id="artist" placeholder="Artisti">
-<input id="song" placeholder="Kappale">
-<button onclick="evaluateSong()">Arvioi kappale</button>
-<p id="message" class="small"></p>
-<div id="current"></div><h2>Aiemmat tulokset</h2>
-<div id="history"></div><script>
-const KEY="sokerimittari-history-v1";
-let songs=[];
-try { songs=JSON.parse(localStorage.getItem(KEY)||"[]"); } catch(e) {}
+<main>
 
-function safe(text){
- return String(text).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+<h1>🎵 Sokerimittari</h1>
+<p class="subtitle">Musiikin sokeri, mausteisuus ja metallisuus</p>
+
+<section class="panel">
+  <form id="form">
+    <label for="artist">Artisti</label>
+    <input id="artist" maxlength="120" required
+      placeholder="Esim. Days of the New">
+
+    <label for="song">Kappale</label>
+    <input id="song" maxlength="180" required
+      placeholder="Esim. Touch, Peel and Stand">
+
+    <button id="submit" type="submit">Arvioi kappale</button>
+    <div id="status" class="status" role="status"></div>
+  </form>
+</section>
+
+<section id="result" class="panel hidden">
+  <h2 id="resultTitle">Arvio</h2>
+
+  <div class="meter">
+    <div class="meter-title">
+      <span>Sokerisuus</span>
+      <strong id="sugarValue">—</strong>
+    </div>
+    <div class="bar"><div id="sugarBar" class="fill"></div></div>
+  </div>
+
+  <div class="meter">
+    <div class="meter-title">
+      <span>Mausteisuus</span>
+      <strong id="spiceValue">—</strong>
+    </div>
+    <div class="bar"><div id="spiceBar" class="fill"></div></div>
+  </div>
+
+  <div class="meter">
+    <div class="meter-title">
+      <span>Metallisuus</span>
+      <strong id="metalValue">—</strong>
+    </div>
+    <div class="bar"><div id="metalBar" class="fill"></div></div>
+  </div>
+
+  <h3>Perustelut</h3>
+  <p id="explanation" class="explanation"></p>
+  <p id="confidence" class="small"></p>
+</section>
+
+<section class="panel">
+  <h2>Aiemmat tulokset</h2>
+  <div id="history" class="small">Ladataan tuloksia…</div>
+</section>
+
+<p class="small">
+Arviot kuvaavat musiikin piirteitä, eivät sen laatua.
+Metallisuus tarkoittaa metallisia musiikillisia piirteitä,
+ei pelkästään äänekkyyttä tai särökitaraa.
+</p>
+
+<script>
+const form = document.getElementById("form");
+const button = document.getElementById("submit");
+const statusBox = document.getElementById("status");
+const resultBox = document.getElementById("result");
+const historyBox = document.getElementById("history");
+
+function showMeter(name, value) {
+  const number = Math.max(0, Math.min(100, Number(value) || 0));
+  document.getElementById(name + "Value").textContent =
+    Math.round(number) + "%";
+  document.getElementById(name + "Bar").style.width = number + "%";
 }
 
-function showHistory(){
- const history=document.getElementById("history");
- if(!songs.length){
-  history.innerHTML='<p class="small">Ei vielä tallennettuja tuloksia.</p>';
-  return;
- }
- history.innerHTML=songs.slice().reverse().map(x=>
-  '<div class="card"><strong>'+safe(x.artist)+' – '+safe(x.song)+'</strong>'+
-  '<p class="result">Sokerisuus: '+x.sugar+' %</p>'+
-  '<p class="result">Mausteisuus: '+x.spice+' %</p>'+
-  '<p class="small">'+safe(x.date)+'</p></div>'
- ).join("");
+function showResult(item) {
+  resultBox.classList.remove("hidden");
+  document.getElementById("resultTitle").textContent =
+    item.artist + " – " + item.song;
+
+  showMeter("sugar", item.sugar);
+  showMeter("spice", item.spice);
+  showMeter("metal", item.metal);
+
+  document.getElementById("explanation").textContent =
+    item.explanation || "Perustelua ei saatavilla.";
+
+  document.getElementById("confidence").textContent =
+    item.confidence ? "Arvion varmuus: " + item.confidence + "." : "";
 }
 
-function evaluateSong(){
- const artist=document.getElementById("artist").value.trim();
- const song=document.getElementById("song").value.trim();
- const message=document.getElementById("message");
- const current=document.getElementById("current");
+function renderHistory(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    historyBox.textContent = "Ei vielä tallennettuja tuloksia.";
+    return;
+  }
 
- if(!artist||!song){
-  message.textContent="Kirjoita artistin ja kappaleen nimi.";
-  return;
- }
+  historyBox.replaceChildren();
 
- current.innerHTML="";
- message.textContent="Arviointia ei ole vielä kytketty käyttöön. Kappaletta ei tallennettu.";
+  items.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "history-item";
+
+    const name = document.createElement("div");
+    name.className = "history-name";
+    name.textContent = item.artist + " – " + item.song;
+
+    const values = document.createElement("div");
+    values.className = "history-values";
+    values.textContent =
+      "Sokerisuus " + item.sugar + "% · " +
+      "Mausteisuus " + item.spice + "% · " +
+      "Metallisuus " + item.metal + "%";
+
+    row.append(name, values);
+    historyBox.append(row);
+  });
 }
 
-showHistory();
-</script></body>
-</html>
+async function loadHistory() {
+  try {
+    const response = await fetch("/api/history");
+    const data = await response.json();
+
+    if (!response.ok) throw new Error();
+
+    renderHistory(data.items);
+  } catch {
+    historyBox.textContent =
+      "Yhteinen tuloshistoria ei ole vielä käytössä.";
+  }
+}
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const artist = document.getElementById("artist").value.trim();
+  const song = document.getElementById("song").value.trim();
+
+  if (!artist || !song) return;
+
+  button.disabled = true;
+  statusBox.textContent = "Arvioidaan kappaletta…";
+  resultBox.classList.add("hidden");
+
+  try {
+    const response = await fetch("/api/evaluate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artist, song })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Arviointi ei onnistunut.");
+    }
+
+    showResult(data.item);
+    statusBox.textContent = "Arvio valmis ja tallennettu.";
+    await loadHistory();
+
+  } catch (error) {
+    statusBox.textContent =
+      error.message || "Arviointipalvelu ei ole vielä käytettävissä.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+loadHistory();
+</script>
+
+</main>
+</body>
+ </html>
