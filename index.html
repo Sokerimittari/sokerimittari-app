@@ -1,143 +1,309 @@
-<script>
-const form = document.getElementById("form");
-const button = document.getElementById("submit");
-const statusBox = document.getElementById("status");
-const resultBox = document.getElementById("result");
-const historyBox = document.getElementById("history");
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sokerimittari</title>
 
-const STORAGE_KEY = "sokerimittari-history-v1";
-
-function getHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(items) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-function showMeter(name, value) {
-  const number = Math.max(0, Math.min(100, Number(value) || 0));
-  document.getElementById(name + "Value").textContent =
-    Math.round(number) + "%";
-  document.getElementById(name + "Bar").style.width =
-    number + "%";
-}
-
-function showResult(item) {
-  resultBox.classList.remove("hidden");
-
-  document.getElementById("resultTitle").textContent =
-    item.artist + " – " + item.song;
-
-  showMeter("sugar", item.sugar);
-  showMeter("spice", item.spice);
-  showMeter("metal", item.metal);
-
-  document.getElementById("explanation").textContent =
-    item.explanation || "Perustelua ei saatavilla.";
-
-  document.getElementById("confidence").textContent =
-    item.confidence
-      ? "Arvion varmuus: " + item.confidence + "."
-      : "";
-}
-
-function renderHistory(items) {
-  historyBox.replaceChildren();
-
-  if (!items.length) {
-    historyBox.textContent = "Ei vielä tallennettuja tuloksia.";
-    return;
-  }
-
-  items.forEach(item => {
-    const row = document.createElement("div");
-    row.className = "history-item";
-
-    const name = document.createElement("div");
-    name.className = "history-name";
-    name.textContent = item.artist + " – " + item.song;
-
-    const values = document.createElement("div");
-    values.className = "history-values";
-    values.textContent =
-      "Sokerisuus " + item.sugar + "% · " +
-      "Mausteisuus " + item.spice + "% · " +
-      "Metallisuus " + item.metal + "%";
-
-    row.append(name, values);
-    historyBox.append(row);
-  });
-}
-
-form.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  const artist =
-    document.getElementById("artist").value.trim();
-  const song =
-    document.getElementById("song").value.trim();
-
-  if (!artist || !song) return;
-
-  button.disabled = true;
-  statusBox.textContent = "Arvioidaan kappaletta…";
-  resultBox.classList.add("hidden");
-
-  try {
-    const response = await fetch("/api/evaluate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ artist, song })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.error || "Arviointi ei onnistunut."
-      );
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 650px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f7f7f7;
+      color: #222;
     }
 
-    const item = {
-      ...data.item,
-      artist,
-      song,
-      savedAt: new Date().toISOString()
-    };
+    h1 {
+      margin-bottom: 6px;
+    }
 
-    showResult(item);
+    .intro {
+      margin-top: 0;
+      color: #555;
+    }
 
-    let items = getHistory();
+    form, .panel {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      margin-top: 18px;
+    }
 
-    // Saman kappaleen uusi arvio korvaa vanhan.
-    items = items.filter(old =>
-      !(old.artist.toLowerCase() === artist.toLowerCase() &&
-        old.song.toLowerCase() === song.toLowerCase())
-    );
+    label {
+      display: block;
+      margin-top: 14px;
+      font-weight: bold;
+    }
 
-    items.unshift(item);
-    items = items.slice(0, 100);
+    input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+      font-size: 16px;
+    }
 
-    saveHistory(items);
-    renderHistory(items);
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 18px;
+      background: #222;
+      color: white;
+      border: 0;
+      border-radius: 7px;
+      font-size: 16px;
+      cursor: pointer;
+    }
 
-    statusBox.textContent =
-      "Arvio valmis. Tulos tallennettiin tähän selaimeen.";
+    button:disabled {
+      opacity: 0.5;
+    }
 
-  } catch (error) {
-    statusBox.textContent =
-      error.message || "Arviointipalveluun ei saatu yhteyttä.";
-  } finally {
-    button.disabled = false;
-  }
-});
+    .hidden {
+      display: none;
+    }
 
-renderHistory(getHistory());
-      </script>
+    .meter {
+      margin: 18px 0;
+    }
+
+    .meter-heading {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      margin-bottom: 7px;
+    }
+
+    .bar-background {
+      height: 12px;
+      background: #e5e5e5;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 100%;
+      width: 0;
+      background: #e7a52c;
+      transition: width 0.3s;
+    }
+
+    #spiceBar {
+      background: #d65b40;
+    }
+
+    #status {
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+
+    #explanation {
+      line-height: 1.6;
+    }
+
+    .history-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    .history-values {
+      color: #555;
+      margin-top: 4px;
+    }
+
+    h2 {
+      font-size: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Sokerimittari</h1>
+  <p class="intro">
+    Arvioi kappaleen sokerisuus ja mausteisuus.
+  </p>
+
+  <form id="form">
+    <label for="artist">Artisti</label>
+    <input id="artist" required placeholder="Artistin nimi">
+
+    <label for="song">Kappale</label>
+    <input id="song" required placeholder="Kappaleen nimi">
+
+    <button id="submit" type="submit">Arvioi kappale</button>
+  </form>
+
+  <p id="status" role="status"></p>
+
+  <section id="result" class="panel hidden">
+    <h2 id="resultTitle"></h2>
+
+    <div class="meter">
+      <div class="meter-heading">
+        <span>Sokerisuus</span>
+        <span id="sugarValue">0%</span>
+      </div>
+      <div class="bar-background">
+        <div id="sugarBar" class="bar"></div>
+      </div>
+    </div>
+
+    <div class="meter">
+      <div class="meter-heading">
+        <span>Mausteisuus</span>
+        <span id="spiceValue">0%</span>
+      </div>
+      <div class="bar-background">
+        <div id="spiceBar" class="bar"></div>
+      </div>
+    </div>
+
+    <p id="explanation"></p>
+    <p id="confidence"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Aiemmat tulokset</h2>
+    <div id="history">Ei vielä tallennettuja tuloksia.</div>
+  </section>
+
+  <script>
+    const form = document.getElementById("form");
+    const button = document.getElementById("submit");
+    const statusBox = document.getElementById("status");
+    const resultBox = document.getElementById("result");
+    const historyBox = document.getElementById("history");
+
+    const STORAGE_KEY = "sokerimittari-history-v1";
+
+    function getHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function showMeter(name, value) {
+      const number = Math.max(0, Math.min(100, Number(value) || 0));
+
+      document.getElementById(name + "Value").textContent =
+        Math.round(number) + "%";
+
+      document.getElementById(name + "Bar").style.width =
+        number + "%";
+    }
+
+    function showResult(item) {
+      resultBox.classList.remove("hidden");
+
+      document.getElementById("resultTitle").textContent =
+        item.artist + " – " + item.song;
+
+      showMeter("sugar", item.sugar);
+      showMeter("spice", item.spice);
+
+      document.getElementById("explanation").textContent =
+        item.explanation || "Perustelua ei saatavilla.";
+
+      document.getElementById("confidence").textContent =
+        item.confidence
+          ? "Arvion varmuus: " + item.confidence + "."
+          : "";
+    }
+
+    function renderHistory(items) {
+      historyBox.replaceChildren();
+
+      if (!items.length) {
+        historyBox.textContent = "Ei vielä tallennettuja tuloksia.";
+        return;
+      }
+
+      items.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "history-item";
+
+        const name = document.createElement("div");
+        name.textContent = item.artist + " – " + item.song;
+
+        const values = document.createElement("div");
+        values.className = "history-values";
+        values.textContent =
+          "Sokerisuus " + item.sugar + "% · " +
+          "Mausteisuus " + item.spice + "%";
+
+        row.append(name, values);
+        historyBox.append(row);
+      });
+    }
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const artist = document.getElementById("artist").value.trim();
+      const song = document.getElementById("song").value.trim();
+
+      if (!artist || !song) return;
+
+      button.disabled = true;
+      statusBox.textContent = "Arvioidaan kappaletta…";
+      resultBox.classList.add("hidden");
+
+      try {
+        const response = await fetch("/api/evaluate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ artist, song })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Arviointi ei onnistunut.");
+        }
+
+        const item = {
+          ...data.item,
+          artist,
+          song,
+          savedAt: new Date().toISOString()
+        };
+
+        showResult(item);
+
+        let items = getHistory();
+
+        items = items.filter(old =>
+          !(old.artist.toLowerCase() === artist.toLowerCase() &&
+            old.song.toLowerCase() === song.toLowerCase())
+        );
+
+        items.unshift(item);
+        items = items.slice(0, 10);
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        renderHistory(items);
+
+        statusBox.textContent =
+          "Arvio valmis. Tulos tallennettiin tähän selaimeen.";
+
+      } catch (error) {
+        statusBox.textContent =
+          error.message || "Arviointipalveluun ei saatu yhteyttä.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    renderHistory(getHistory());
+  </script>
+</body>
+</html>
