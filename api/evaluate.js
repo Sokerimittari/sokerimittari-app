@@ -24,88 +24,84 @@ module.exports = async (req, res) => {
   const itemType = type === "album" ? "albumi" : "kappale";
 
   const prompt = `
-Arvioi seuraava musiikki Sokerimittaria varten.
+Analyze this music for the Sugar Meter.
 
-Kohde: ${artist} – ${song}
-Arvioinnin kohde: ${itemType}
+Artist: ${artist}
+Title: ${song}
+Type: ${itemType}
 
-Anna kolme toisistaan riippumatonta arviota asteikolla 0–100.
+Give three independent scores from 0 to 100.
 
-1. SOKERISUUS
-Arvioi musiikin melodisuutta, helposti lähestyttävyyttä,
-välitöntä vetovoimaa ja tarttuvuutta.
+1. SUGAR
+Measures melody, catchiness, immediate appeal, and accessibility.
 
-Sokerisuusankkurit:
-- MÔR – Time Slips: 0 % vertailukohta, ei absoluuttinen nolla.
-- Lynyrd Skynyrd – Simple Man: 10 %
-- Goose – Thatch: 20 %
-- Rainbow – Catch the Rainbow: 35 %
-- REO Speedwagon – Roll with the Changes: 50 %
-- Journey – Don't Stop Believin': 70 %
-- Bon Jovi – Livin' on a Prayer: 85 %
-- Owl City – Fireflies: 100 %
+Sugar reference points:
+- MÔR – Time Slips: 0%, a reference point, not an absolute zero.
+- Lynyrd Skynyrd – Simple Man: 10%.
+- Goose – Thatch: 20%.
+- Rainbow – Catch the Rainbow: 35%.
+- REO Speedwagon – Roll with the Changes: 50%.
+- Journey – Don't Stop Believin': 70%.
+- Bon Jovi – Livin' on a Prayer: 85%.
+- Owl City – Fireflies: 100%.
 
-Käytä ankkureita suuntaa antavina vertailukohtina.
-Älä kopioi prosentteja automaattisesti, vaan arvioi musiikkia
-suhteessa näihin esimerkkeihin.
+Use these as approximate reference points, not automatic scores.
 
-2. SUOLAISUUS
-Arvioi, kuinka paljon musiikki muistuttaa metallimusiikkia.
-Tämä on tyylillinen arvio, ei arvio musiikin laadusta.
+2. SALT
+Measures how much the music resembles heavy metal.
 
-Suolaisuusankkurit:
-- ABBA – Dancing Queen: lähellä 0 %.
-- AC/DC – Back in Black: raskasta rockia, mutta ei äärimetallia.
-- Metallica – Fight Fire with Fire: erittäin metallinen thrash metal.
+Salt reference points:
+- ABBA – Dancing Queen: close to 0%.
+- AC/DC – Back in Black: heavy rock, but not extreme metal.
+- Metallica – Fight Fire with Fire: highly metallic thrash metal.
 
-Älä anna korkeaa suolaisuutta pelkästään siksi, että musiikki
-on kovaa, säröistä, synkkää tai raskasta. Arvioi metallimusiikille
-tyypillisiä piirteitä kokonaisuutena, kuten riffejä, soittotapaa,
-soundia, laulutyyliä ja musiikillista ilmaisua.
+Do not give a high Salt score simply because music is loud, distorted,
+dark, or heavy. Consider riffs, playing style, sound, vocal style,
+and the overall musical character.
 
-3. MAUSTEISUUS
-Arvioi musiikin yllätyksellisyyttä, rakenteellista vaihtelua,
-instrumentaalisia osuuksia, sooloja, improvisaatiota ja
-musiikillista kehittelyä.
+3. SPICE
+Measures musical variety, unpredictability, instrumental passages,
+solos, improvisation, and musical development.
 
-Mausteisuus ei tarkoita samaa kuin raskaus tai metallisuus.
-Musiikki voi olla hyvin mausteista, vaikka sen suolaisuus olisi matala.
-Myöskään tekninen monimutkaisuus ei yksin tarkoita suurta mausteisuutta.
+Spice is independent of Salt. Music can be highly spicy without
+sounding like metal. Technical complexity alone does not guarantee
+a high score.
 
-Huomioi versioiden erot:
-- Pitkä liveversio voi olla studioversiota mausteisempi, jos siinä
-  on todellista improvisaatiota, sooloja tai musiikillista kehittelyä.
-- Pelkkä pitkä kesto ei nosta mausteisuutta.
-- Älä oleta liveversion olevan automaattisesti studioversiota parempi
-  tai mausteisempi.
-- Arvioi albumia kokonaisuutena, jos kohteena on albumi.
-  Huomioi albumin kappaleiden vaihtelu ja kokonaisrakenne.
+Consider different versions carefully:
+- A long live version can be spicier than a studio version when it
+  contains genuine improvisation, solos, or musical development.
+- Duration alone does not increase Spice.
+- Do not assume that every live version is automatically spicier.
+- For an album, assess the album as a whole, including variation
+  between tracks and its overall structure.
 
-Vertaa musiikkia mahdollisuuksien mukaan annettuihin ankkureihin.
-Boléro ja Stravinskyn Kevätuhri voivat auttaa hahmottamaan
-musiikillista kehittelyä ja yllätyksellisyyttä, mutta älä keksi niille
-ennalta määrättyjä prosenttiarvoja.
+Stravinsky's The Rite of Spring and Ravel's Boléro may serve as
+general musical reference points for development and variation.
+Do not invent fixed percentage scores for them.
 
-YLEISET OHJEET
-- Arvioi musiikkia, älä artistin mainetta tai suosiota.
-- Älä anna kaikkien kolmen mittarin seurata samaa kaavaa.
-- Käytä koko asteikkoa perustellusti.
-- Jos et tunne kyseistä kappaletta tai albumia riittävän hyvin,
-  ilmaise epävarmuus confidence-kentässä.
-- Älä keksi yksityiskohtia kappaleesta tai albumista.
-- Perustele arviot lyhyesti suomeksi.
-- Käytä confidence-arvona yhtä seuraavista: "matala", "keskitaso", "korkea".
+GENERAL RULES
+- Evaluate the music, not the artist's fame or popularity.
+- Keep all three scores independent.
+- Use the full scale thoughtfully.
+- Do not invent musical details.
+- If you do not know the specific recording or album well enough,
+  reflect that uncertainty in the confidence field.
+- Write the explanation in natural, concise English.
+- Avoid generic filler, awkward phrasing, and overly formal language.
+- Be specific about the musical characteristics that support the scores.
+- A little wit is welcome when appropriate, but do not force jokes.
+- Confidence must be one of: "low", "medium", "high".
 
-Vastaa vain kelvollisena JSON-objektina tässä muodossa:
+Return only a valid JSON object:
 {
   "sugar": 0,
   "salt": 0,
   "spice": 0,
-  "explanation": "Lyhyt perustelu suomeksi.",
-  "confidence": "matala"
+  "explanation": "A short, natural English explanation.",
+  "confidence": "low"
 }
 
-Kaikkien kolmen mittarin tulee olla kokonaislukuja väliltä 0–100.
+All three scores must be integers between 0 and 100.
 `;
 
   try {
@@ -125,7 +121,7 @@ Kaikkien kolmen mittarin tulee olla kokonaislukuja väliltä 0–100.
             {
               role: "system",
               content:
-                "Olet musiikkia analysoiva avustaja. Vastaa vain pyydetyssä JSON-muodossa. Älä lisää markdown-aitoja tai muuta tekstiä."
+                "You are a music analysis assistant. Return only the requested valid JSON. Write the explanation in natural English. Do not use Markdown fences."
             },
             {
               role: "user",
@@ -182,7 +178,7 @@ Kaikkien kolmen mittarin tulee olla kokonaislukuja väliltä 0–100.
         salt: result.salt,
         spice: result.spice,
         explanation: result.explanation || "",
-        confidence: result.confidence || "matala"
+        confidence: result.confidence || "low"
       }
     });
   } catch (error) {
