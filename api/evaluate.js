@@ -1,167 +1,140 @@
-module.exports = async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Pyyntöä ei tueta."
-    });
+    return res.status(405).json({ error: "Vain POST-pyynnöt sallitaan." });
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    return res.status(503).json({
-      error: "Arviointipalvelua ei ole vielä määritetty."
+    return res.status(500).json({
+      error: "OpenRouter API-avain puuttuu Vercelin asetuksista."
     });
   }
 
-  const artist = String(req.body?.artist || "").trim();
-  const song = String(req.body?.song || "").trim();
+  const { artist, song } = req.body || {};
 
   if (!artist || !song) {
     return res.status(400).json({
-      error: "Anna artisti ja kappale."
+      error: "Anna artistin ja kappaleen nimi."
     });
   }
 
   const prompt = `
-Arvioi seuraavan musiikkikappaleen kolme ominaisuutta
-asteikolla 0–100 prosenttia.
+Arvioi musiikkikappaletta: ${artist} - ${song}.
 
-ARTISTI: ${artist}
-KAPPALE: ${song}
+Anna kolme toisistaan riippumatonta arvoa väliltä 0-100.
 
-1. SOKERISUUS
-Kuinka makeaa, melodista, siloiteltua ja helposti
-lähestyttävää musiikki on? Arvioi juuri tätä kappaletta.
+SOKERISUUS:
+Melodisuus, tarttuvuus, siloiteltuus ja helposti lähestyttävät pop-koukut.
+Suuri arvo tarkoittaa hyvin makeaa ja helposti lähestyttävää musiikkia.
 
-2. MAUSTEISUUS
-Kuinka omaperäistä, särmikästä, yllätyksellistä tai
-musiikillisesti poikkeavaa kappale on?
+MAUSTEISUUS:
+Omaperäisyys, yllätyksellisyys, särmä sekä rytminen ja harmoninen monimutkaisuus.
+Suuri arvo tarkoittaa epätavallista ja yllätyksellistä musiikkia.
 
-3. METALLISUUS
-Kuinka raskasta ja nimenomaan metallista musiikki on?
-Huomioi riffit, kitarasoundi, rytmiikka, laulutapa,
-raskaus ja metallille ominaiset musiikilliset piirteet.
+METALLISUUS:
+Kuinka raskasta ja nimenomaan metallimusiikin kaltaista musiikki on.
+Älä sekoita metallisuuteen pelkkää kovaa ääntä, synkkyyttä, säröä tai raskasta rockia.
+ABBA - Dancing Queen on lähellä nollaa.
+AC/DC - Back in Black on raskasta rockia, mutta ei äärimetallia.
+Metallica - Fight Fire with Fire on erittäin metallinen thrash metal -kappale, mutta ei välttämättä asteikon ehdoton maksimi.
 
-METALLISUUDEN VERTAILUKOHTIA:
-- ABBA – Dancing Queen: 0 % tai hyvin lähellä nollaa.
-- Days of the New – Touch, Peel and Stand:
-  akustispohjaista rockia; ei pidä sekoittaa
-  akustisuutta metallisuuteen.
-- AC/DC – Back in Black: raskasta ja rouheaa rockia,
-  mutta ei äärimetallia.
-- Metallica – Fight Fire with Fire: erittäin metallista
-  ja aggressiivista thrash metalia.
-- Älä oleta, että Fight Fire with Fire on koko asteikon
-  ehdoton maksimi. Sitäkin raskaampaa metallimusiikkia
-  on olemassa.
+Arvioi tunnettujen tietojen perusteella. Älä väitä kuunnelleesi kappaletta.
+Jos et tunne kappaletta riittävästi, ilmaise epävarmuus.
+Älä arvioi kappaleen laatua äläkä anna arvosanaa.
+Älä keksi varmoja yksityiskohtia.
 
-Särökitara, äänekkyys tai synkkä tunnelma eivät yksin
-tarkoita suurta metallisuutta.
-
-TÄRKEÄÄ:
-- Arvioi kappale, älä artistin mainetta.
-- Älä keksi tietoja, jos kappale ei ole sinulle tuttu.
-- Jos et tunne kappaletta riittävästi, kerro epävarmuudesta
-  ja merkitse varmuudeksi "matala".
-- Älä arvioi musiikin laatua tai paremmuutta.
-- Perustele arviot suomeksi.
-- Palauta vain JSON-objekti tässä muodossa:
+Vastaa vain kelvollisena JSON-objektina seuraavassa muodossa:
 {
   "sugar": 0,
   "spice": 0,
   "metal": 0,
   "explanation": "Lyhyt perustelu suomeksi.",
-  "confidence": "kohtalainen"
+  "confidence": "matala"
 }
+
+Arvojen pitää olla kokonaislukuja 0-100.
+confidence-arvo on "matala", "kohtalainen" tai "korkea".
 `;
 
   try {
     const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
+      "https://openrouter.ai/api/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://sokerimittari-app.vercel.app",
+          "X-Title": "Sokerimittari"
         },
         body: JSON.stringify({
-          model: process.env.GROQ_MODEL ||
-            "llama-3.3-70b-versatile",
+          model: "thinkingmachines/inkling-small:free",
           messages: [
             {
               role: "system",
-              content:
-                "Olet musiikin piirteitä vertaileva avustaja. " +
-                "Ole rehellinen epävarmuudesta. Palauta vain JSON."
+              content: "Olet musiikkia analysoiva avustaja. Vastaa vain pyydetyssä JSON-muodossa."
             },
             {
               role: "user",
               content: prompt
             }
           ],
-          temperature: 0.2,
-          max_tokens: 600,
-          response_format: {
-            type: "json_object"
-          }
+          temperature: 0.3
         })
       }
     );
 
-    if (response.status === 429) {
-      return res.status(429).json({
-        error:
-          "Arviointipalvelun käyttöraja on täynnä. " +
-          "Aiemmat tulokset ovat edelleen katseltavissa."
-      });
-    }
+    const data = await response.json();
 
     if (!response.ok) {
+      console.error("OpenRouter-virhe:", response.status, data);
       return res.status(502).json({
-        error: "Arviointipalvelu ei vastannut onnistuneesti."
+        error: "Musiikkipalvelu ei vastannut onnistuneesti. Tarkista myöhemmin uudelleen."
       });
     }
 
-    const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      throw new Error("Tyhjä vastaus.");
+      return res.status(502).json({
+        error: "Musiikkipalvelu ei palauttanut arviointia."
+      });
     }
 
-    const result = JSON.parse(content);
+    const cleaned = content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
 
-    function percentage(value) {
-      const number = Number(value);
+    const result = JSON.parse(cleaned);
 
-      if (!Number.isFinite(number)) {
-        throw new Error("Virheellinen prosentti.");
+    for (const key of ["sugar", "spice", "metal"]) {
+      if (
+        typeof result[key] !== "number" ||
+        !Number.isFinite(result[key]) ||
+        result[key] < 0 ||
+        result[key] > 100
+      ) {
+        throw new Error("Virheellinen arviointiarvo");
       }
-
-      return Math.max(0, Math.min(100, Math.round(number)));
     }
 
-    const item = {
-      artist,
-      song,
-      sugar: percentage(result.sugar),
-      spice: percentage(result.spice),
-      metal: percentage(result.metal),
-      explanation: String(
-        result.explanation || "Perustelua ei saatu."
-      ).slice(0, 1800),
-      confidence: ["korkea", "kohtalainen", "matala"].includes(
-        result.confidence
-      ) ? result.confidence : "kohtalainen"
-    };
-
-    return res.status(200).json({ item });
-
+    return res.status(200).json({
+      item: {
+        artist,
+        song,
+        sugar: result.sugar,
+        spice: result.spice,
+        metal: result.metal,
+        explanation: result.explanation || "",
+        confidence: result.confidence || "matala"
+      }
+    });
   } catch (error) {
-    console.error("Arviointivirhe:", error);
-
+    console.error("Arviointivirhe:", error.message);
     return res.status(502).json({
-      error: "Kappaleen arviointi epäonnistui."
+      error: "Arvioinnin käsittely epäonnistui. Yritä uudelleen."
     });
   }
 };
