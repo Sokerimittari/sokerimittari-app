@@ -69,7 +69,7 @@ confidence-arvo on "matala", "kohtalainen" tai "korkea".
           "X-Title": "Sokerimittari"
         },
         body: JSON.stringify({
-          model: "thinkingmachines/inkling-small:free",
+          model:model: "openrouter/free",
           messages: [
             {
               role: "system",
