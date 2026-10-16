@@ -581,7 +581,7 @@
     try {
       await navigator.clipboard.writeText(currentShareText);
       shareStatus.textContent =
-        "Julkaisuteksti kopioitu. Voit liittää sen LinkedIniin.";
+        "Julkaisuteksti kopioitu.";
     } catch (error) {
       shareStatus.textContent =
         "Kopiointi ei onnistunut. Yritä uudelleen tai kopioi teksti manuaalisesti.";
