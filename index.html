@@ -9,6 +9,7 @@
     :root {
       --background: #fff9cf;
       --card: #fffef5;
+      --result: #fffef5;
       --pink: #f27cae;
       --text: #29251f;
       --muted: #716b60;
@@ -66,15 +67,22 @@
 
     input,
     select {
+      display: block;
       width: 100%;
       min-height: 40px;
       padding: 9px 10px;
       border: 1px solid #d8d0b3;
       border-radius: 9px;
-      background: #fffef5;
+      background: #ffffff;
       color: var(--text);
       font: inherit;
       font-size: 0.95rem;
+    }
+
+    input:focus,
+    select:focus {
+      outline: 2px solid var(--pink);
+      outline-offset: 1px;
     }
 
     button {
@@ -112,16 +120,16 @@
       display: none !important;
     }
 
-    /* Jaettava tuloskortti */
+    /* Tuloskortti */
 
     .share-card {
       padding: 0;
       margin-bottom: 15px;
       overflow: hidden;
-      background: #fff9cf;
-      border: 1px solid #e8dfb5;
+      background: var(--result);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      color: #29251f;
+      color: var(--text);
     }
 
     .share-header {
@@ -130,8 +138,9 @@
       justify-content: space-between;
       gap: 8px;
       padding: 5px 10px;
-      background: var(--pink);
-      color: #29251f;
+      background: var(--background);
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
     }
 
     .share-header-label {
@@ -154,12 +163,12 @@
       border: 0;
       border-radius: 8px;
       background: transparent;
-      color: #29251f;
+      color: var(--text);
       font-size: 1.45rem;
     }
 
     .icon-button:hover {
-      background: rgba(255, 255, 255, 0.35);
+      background: rgba(0, 0, 0, 0.06);
     }
 
     .share-content {
@@ -187,7 +196,7 @@
     .share-analysis {
       margin: 13px 0;
       font-size: 0.88rem;
-      line-height: 1.35;
+      line-height: 1.4;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
@@ -195,7 +204,7 @@
     .share-tags {
       margin-top: 13px;
       font-size: 0.82rem;
-      color: #55465d;
+      color: var(--muted);
     }
 
     .share-status {
@@ -205,7 +214,7 @@
       font-size: 0.8rem;
     }
 
-    /* Arviohistorian näkymä */
+    /* Historia */
 
     .history-card h2 {
       margin-top: 0;
@@ -234,7 +243,7 @@
       font-size: 0.82rem;
     }
 
-    /* Mittareiden selitykset sivun alalaidassa */
+    /* Mittarien selitykset */
 
     .help-section {
       margin-top: 22px;
@@ -303,8 +312,6 @@
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </section>
 
-  <!-- Ainoa tuloskortti toimii myös jaettavan tekstin pohjana -->
-
   <section id="share-section" class="hidden">
     <div class="share-card">
       <div class="share-header">
@@ -323,7 +330,7 @@
             class="icon-button"
             id="share-button"
             type="button"
-            aria-label="Jaa julkaisu"
+            aria-label="Jaa arviointi"
             title="Jaa"
           >
             <svg
@@ -349,11 +356,8 @@
 
       <div class="share-content">
         <h2 class="share-title" id="share-title"></h2>
-
         <ul class="share-scores" id="share-scores"></ul>
-
         <div class="share-analysis" id="share-analysis"></div>
-
         <div class="share-tags">#SugarMeter #Music</div>
       </div>
     </div>
@@ -401,7 +405,9 @@
 
   function readHistory() {
     try {
-      const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      const saved = JSON.parse(
+        localStorage.getItem(HISTORY_KEY) || "[]"
+      );
       return Array.isArray(saved) ? saved : [];
     } catch {
       return [];
@@ -447,7 +453,7 @@
       const name = document.createElement("div");
       name.className = "history-name";
       name.textContent =
-        (item.type === "album" ? "Levy: " : "Kappale: ") +
+        (item.type === "album" || item.type === "albumi" ? "Levy: " : "Kappale: ") +
         item.artist + " – " + item.song;
 
       const scores = document.createElement("div");
@@ -467,10 +473,7 @@
   }
 
   function buildShareCard(item) {
-    const label = item.type === "album" ? "Album" : "Song";
-
-    const title =
-      "🎵 Sugar Meter: " + item.artist + " – " + item.song;
+    const title = "🎵 Sugar Meter: " + item.artist + " – " + item.song;
 
     document.getElementById("share-title").textContent = title;
 
@@ -530,7 +533,13 @@
         body: JSON.stringify({ artist, song, type })
       });
 
-      const data = await response.json();
+      let data;
+
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Palvelin ei palauttanut kelvollista vastausta.");
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Arviointi epäonnistui.");
@@ -543,29 +552,43 @@
       const item = data.item;
       const salt = item.salt ?? item.metal;
 
+      const sugarScore = Number(item.sugar);
+      const saltScore = Number(salt);
+      const spiceScore = Number(item.spice);
+
       if (
-        !validScore(item.sugar) ||
-        !validScore(salt) ||
-        !validScore(item.spice)
+        !validScore(sugarScore) ||
+        !validScore(saltScore) ||
+        !validScore(spiceScore)
       ) {
         throw new Error("Arvioinnista puuttuu mittaritietoja.");
       }
 
-      item.salt = salt;
-      item.type = item.type || type;
+      const result = {
+        artist: item.artist || artist,
+        song: item.song || song,
+        type: type,
+        sugar: sugarScore,
+        salt: saltScore,
+        spice: spiceScore,
+        explanation: item.explanation || "",
+        confidence: item.confidence || "low"
+      };
 
-      buildShareCard(item);
+      buildShareCard(result);
 
       const history = readHistory();
       history.unshift({
-        ...item,
+        ...result,
         createdAt: new Date().toISOString()
       });
 
       saveHistory(history);
       renderHistory();
 
+      statusBox.className = "status";
       statusBox.textContent = "Arvio valmis.";
+
     } catch (error) {
       console.error("Arviointivirhe:", error);
       statusBox.className = "status error";
@@ -578,17 +601,20 @@
   });
 
   document.getElementById("copy-button").addEventListener("click", async () => {
+    if (!currentShareText) return;
+
     try {
       await navigator.clipboard.writeText(currentShareText);
+      shareStatus.textContent = "Julkaisuteksti kopioitu.";
+    } catch {
       shareStatus.textContent =
-        "Julkaisuteksti kopioitu.";
-    } catch (error) {
-      shareStatus.textContent =
-        "Kopiointi ei onnistunut. Yritä uudelleen tai kopioi teksti manuaalisesti.";
+        "Kopiointi ei onnistunut. Yritä uudelleen.";
     }
   });
 
   document.getElementById("share-button").addEventListener("click", async () => {
+    if (!currentShareText) return;
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -608,7 +634,7 @@
           "Teksti kopioitu. Voit liittää sen haluamaasi sovellukseen.";
       } catch {
         shareStatus.textContent =
-          "Käytä kopiointipainiketta ja yritä uudelleen.";
+          "Kopiointi ei onnistunut. Yritä uudelleen.";
       }
     }
   });
