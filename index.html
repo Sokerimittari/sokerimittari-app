@@ -9,7 +9,6 @@
     :root {
       --background: #fff9cf;
       --card: #fffef5;
-      --result: #fffef5;
       --pink: #f27cae;
       --text: #29251f;
       --muted: #716b60;
@@ -67,22 +66,15 @@
 
     input,
     select {
-      display: block;
       width: 100%;
       min-height: 40px;
       padding: 9px 10px;
       border: 1px solid #d8d0b3;
       border-radius: 9px;
-      background: #ffffff;
+      background: #fffef5;
       color: var(--text);
       font: inherit;
       font-size: 0.95rem;
-    }
-
-    input:focus,
-    select:focus {
-      outline: 2px solid var(--pink);
-      outline-offset: 1px;
     }
 
     button {
@@ -96,7 +88,7 @@
       margin-top: 15px;
       border: 0;
       border-radius: 10px;
-      background: var(--pink);
+      background: var(--background);
       color: #291522;
       font-weight: bold;
     }
@@ -120,16 +112,16 @@
       display: none !important;
     }
 
-    /* Tuloskortti */
+    /* Jaettava tuloskortti */
 
     .share-card {
       padding: 0;
       margin-bottom: 15px;
       overflow: hidden;
-      background: var(--result);
-      border: 1px solid var(--border);
+      background: #fffef5;
+      border: 1px solid #e8dfb5;
       border-radius: 16px;
-      color: var(--text);
+      color: #29251f;
     }
 
     .share-header {
@@ -138,9 +130,8 @@
       justify-content: space-between;
       gap: 8px;
       padding: 5px 10px;
-      background: var(--background);
-      color: var(--text);
-      border-bottom: 1px solid var(--border);
+      background: var(--pink);
+      color: #29251f;
     }
 
     .share-header-label {
@@ -163,12 +154,12 @@
       border: 0;
       border-radius: 8px;
       background: transparent;
-      color: var(--text);
+      color: #29251f;
       font-size: 1.45rem;
     }
 
     .icon-button:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: rgba(255, 255, 255, 0.35);
     }
 
     .share-content {
@@ -196,7 +187,7 @@
     .share-analysis {
       margin: 13px 0;
       font-size: 0.88rem;
-      line-height: 1.4;
+      line-height: 1.35;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
@@ -204,7 +195,7 @@
     .share-tags {
       margin-top: 13px;
       font-size: 0.82rem;
-      color: var(--muted);
+      color: #55465d;
     }
 
     .share-status {
@@ -214,7 +205,7 @@
       font-size: 0.8rem;
     }
 
-    /* Historia */
+    /* Arviohistorian näkymä */
 
     .history-card h2 {
       margin-top: 0;
@@ -243,7 +234,7 @@
       font-size: 0.82rem;
     }
 
-    /* Mittarien selitykset */
+    /* Mittareiden selitykset sivun alalaidassa */
 
     .help-section {
       margin-top: 22px;
@@ -312,6 +303,8 @@
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </section>
 
+  <!-- Ainoa tuloskortti toimii myös jaettavan tekstin pohjana -->
+
   <section id="share-section" class="hidden">
     <div class="share-card">
       <div class="share-header">
@@ -330,7 +323,7 @@
             class="icon-button"
             id="share-button"
             type="button"
-            aria-label="Jaa arviointi"
+            aria-label="Jaa julkaisu"
             title="Jaa"
           >
             <svg
@@ -356,8 +349,11 @@
 
       <div class="share-content">
         <h2 class="share-title" id="share-title"></h2>
+
         <ul class="share-scores" id="share-scores"></ul>
+
         <div class="share-analysis" id="share-analysis"></div>
+
         <div class="share-tags">#SugarMeter #Music</div>
       </div>
     </div>
@@ -405,9 +401,7 @@
 
   function readHistory() {
     try {
-      const saved = JSON.parse(
-        localStorage.getItem(HISTORY_KEY) || "[]"
-      );
+      const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
       return Array.isArray(saved) ? saved : [];
     } catch {
       return [];
@@ -453,11 +447,176 @@
       const name = document.createElement("div");
       name.className = "history-name";
       name.textContent =
-        (item.type === "album" || item.type === "albumi" ? "Levy: " : "Kappale: ") +
+        (item.type === "album" ? "Levy: " : "Kappale: ") +
         item.artist + " – " + item.song;
 
       const scores = document.createElement("div");
       scores.className = "history-scores";
+
+      const saltValue = item.salt ?? item.metal;
+
+      scores.textContent =
+        "Sokerisuus " + (validScore(item.sugar) ? item.sugar : "–") + "%" +
+        " · Suolaisuus " + (validScore(saltValue) ? saltValue : "–") + "%" +
+        " · Mausteisuus " + (validScore(item.spice) ? item.spice : "–") + "%";
+
+      entry.appendChild(name);
+      entry.appendChild(scores);
+      box.appendChild(entry);
+    });
+  }
+
+  function buildShareCard(item) {
+    const label = item.type === "album" ? "Album" : "Song";
+
+    const title =
+      "🎵 Sugar Meter: " + item.artist + " – " + item.song;
+
+    document.getElementById("share-title").textContent = title;
+
+    const scoresList = document.getElementById("share-scores");
+    scoresList.replaceChildren();
+
+    [
+      ["🍬 Sugar", item.sugar],
+      ["🧂 Salt", item.salt],
+      ["🌶️ Spice", item.spice]
+    ].forEach(([name, value]) => {
+      const li = document.createElement("li");
+      li.textContent = name + ": " + value + "%";
+      scoresList.appendChild(li);
+    });
+
+    const explanation = item.explanation || "";
+    document.getElementById("share-analysis").textContent = explanation;
+
+    currentShareText =
+      title + "\n\n" +
+      "🍬 Sugar: " + item.sugar + "%\n" +
+      "🧂 Salt: " + item.salt + "%\n" +
+      "🌶️ Spice: " + item.spice + "%\n\n" +
+      explanation + "\n\n" +
+      "#SugarMeter #Music";
+
+    shareSection.classList.remove("hidden");
+    shareStatus.textContent = "";
+  }
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const artist = document.getElementById("artist").value.trim();
+    const song = document.getElementById("song").value.trim();
+    const type = document.getElementById("type").value;
+
+    if (!artist || !song) {
+      statusBox.textContent = "Täytä artistin ja kappaleen tai levyn nimi.";
+      statusBox.className = "status error";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Arvioidaan…";
+    statusBox.className = "status";
+    statusBox.textContent = "Musiikkia analysoidaan…";
+    shareSection.classList.add("hidden");
+
+    try {
+      const response = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ artist, song, type })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Arviointi epäonnistui.");
+      }
+
+      if (!data.item) {
+        throw new Error("Palvelu ei palauttanut arviointitulosta.");
+      }
+
+      const item = data.item;
+      const salt = item.salt ?? item.metal;
+
+      if (
+        !validScore(item.sugar) ||
+        !validScore(salt) ||
+        !validScore(item.spice)
+      ) {
+        throw new Error("Arvioinnista puuttuu mittaritietoja.");
+      }
+
+      item.salt = salt;
+      item.type = item.type || type;
+
+      buildShareCard(item);
+
+      const history = readHistory();
+      history.unshift({
+        ...item,
+        createdAt: new Date().toISOString()
+      });
+
+      saveHistory(history);
+      renderHistory();
+
+      statusBox.textContent = "Arvio valmis.";
+    } catch (error) {
+      console.error("Arviointivirhe:", error);
+      statusBox.className = "status error";
+      statusBox.textContent =
+        error.message || "Arviointi epäonnistui. Yritä uudelleen.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Arvioi";
+    }
+  });
+
+  document.getElementById("copy-button").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(currentShareText);
+      shareStatus.textContent =
+        "Julkaisuteksti kopioitu.";
+    } catch (error) {
+      shareStatus.textContent =
+        "Kopiointi ei onnistunut. Yritä uudelleen tai kopioi teksti manuaalisesti.";
+    }
+  });
+
+  document.getElementById("share-button").addEventListener("click", async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Sugar Meter",
+          text: currentShareText
+        });
+        shareStatus.textContent = "";
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          shareStatus.textContent = "Jakaminen ei onnistunut.";
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(currentShareText);
+        shareStatus.textContent =
+          "Teksti kopioitu. Voit liittää sen haluamaasi sovellukseen.";
+      } catch {
+        shareStatus.textContent =
+          "Käytä kopiointipainiketta ja yritä uudelleen.";
+      }
+    }
+  });
+
+  renderHistory();
+</script>
+</body>
+</html>
 
       const saltValue = item.salt ?? item.metal;
 
